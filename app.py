@@ -1,12 +1,32 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, string, random
 
 
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    uname = data.get('username')
+    pwd = data.get('password')
+
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    c.execute('SELECT id, password FROM users WHERE username = ?', (uname,))
+    user = c.fetchone()
+    conn.close()
+
+    if user and check_password_hash(user[1], pwd):
+        session['user_id'] = user[0]
+        session['username'] = uname
+        return jsonify({'success': True, 'message': 'Login successful'})
+    else:
+        return jsonify({'success': False, 'message': 'Invalid credentials'})
+
 
 # -----------------------------
 # Database Initialization
@@ -85,9 +105,7 @@ def shorten():
     conn.close()
 
     short_url = request.host_url + short_code
-    flash(f'Short URL created: {short_url}', 'success')
-    return redirect(url_for('index'))
-
+    return render_template('shortened.html', short_url=short_url)
 @app.route('/<short_code>')
 def redirect_short(short_code):
     conn = sqlite3.connect('database.db')
@@ -121,26 +139,6 @@ def register():
             conn.close()
     return render_template('register.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        uname = request.form['username']
-        pwd = request.form['password']
-
-        conn = sqlite3.connect('database.db')
-        c = conn.cursor()
-        c.execute('SELECT id, password FROM users WHERE username = ?', (uname,))
-        user = c.fetchone()
-        conn.close()
-
-        if user and check_password_hash(user[1], pwd):
-            session['user_id'] = user[0]
-            session['username'] = uname
-            flash('Login successful!', 'success')
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid credentials.', 'error')
-    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
