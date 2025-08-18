@@ -1,38 +1,18 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3, string, random
 
-
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
-
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    uname = data.get('username')
-    pwd = data.get('password')
-
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    c.execute('SELECT id, password FROM users WHERE username = ?', (uname,))
-    user = c.fetchone()
-    conn.close()
-
-    if user and check_password_hash(user[1], pwd):
-        session['user_id'] = user[0]
-        session['username'] = uname
-        return jsonify({'success': True, 'message': 'Login successful'})
-    else:
-        return jsonify({'success': False, 'message': 'Invalid credentials'})
 
 
 # -----------------------------
 # Database Initialization
 # -----------------------------
 def init_db():
-    conn = sqlite3.connect('database.db')
+    DB_PATH = os.path.join(os.path.dirname(__file__), "database.db")
+    conn = sqlite3.connect(DB_PATH)   # ✅ connect to DB
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -53,7 +33,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Call initialization once at startup
 init_db()
+
 
 # -----------------------------
 # URL Shortener Logic
@@ -71,16 +53,38 @@ def generate_unique_short_code():
             conn.close()
             return code
 
+
 # -----------------------------
 # Routes
 # -----------------------------
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        uname = request.form['username']
+        pwd = request.form['password']
+
+        conn = sqlite3.connect('database.db')
+        c = conn.cursor()
+        c.execute('SELECT id, password FROM users WHERE username = ?', (uname,))
+        user = c.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user[1], pwd):
+            session['user_id'] = user[0]
+            session['username'] = uname
+            flash('Login successful', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid credentials', 'error')
+
+    return render_template('login.html')
+
 
 @app.route('/')
 def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    # fetch user’s URLs
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
     c.execute('SELECT original, short FROM urls WHERE user_id = ?', (session['user_id'],))
@@ -88,6 +92,7 @@ def index():
     conn.close()
 
     return render_template('index.html', urls=urls)
+
 
 @app.route('/shorten', methods=['POST'])
 def shorten():
@@ -106,17 +111,21 @@ def shorten():
 
     short_url = request.host_url + short_code
     return render_template('shortened.html', short_url=short_url)
+
+
 @app.route('/<short_code>')
 def redirect_url(short_code):
-    conn = sqlite3.connect('urls.db')
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute("SELECT full_url FROM urls WHERE short_code=?", (short_code,))
+    c.execute("SELECT original FROM urls WHERE short=?", (short_code,))
     result = c.fetchone()
     conn.close()
     if result:
         return redirect(result[0])
     else:
-        return "404 - Page Not Found", 404
+        return render_template('404.html'), 404
+
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -144,9 +153,12 @@ def logout():
     flash('Logged out.', 'info')
     return redirect(url_for('login'))
 
+
 @app.errorhandler(404)
 def not_found(e):
     return render_template('404.html'), 404
+
+
 @app.route("/healthz")
 def health_check():
     return "OK", 200
