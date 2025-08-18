@@ -107,18 +107,16 @@ def shorten():
     short_url = request.host_url + short_code
     return render_template('shortened.html', short_url=short_url)
 @app.route('/<short_code>')
-def redirect_short(short_code):
-    conn = sqlite3.connect('database.db')
+def redirect_url(short_code):
+    conn = sqlite3.connect('urls.db')
     c = conn.cursor()
-    c.execute('SELECT original FROM urls WHERE short = ?', (short_code,))
+    c.execute("SELECT full_url FROM urls WHERE short_code=?", (short_code,))
     result = c.fetchone()
     conn.close()
-
     if result:
         return redirect(result[0])
     else:
-        return render_template('404.html'), 404
-
+        return "404 - Page Not Found", 404
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
