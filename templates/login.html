@@ -1,27 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head><title>Login</title></head>
-<body>
-<h2>Login</h2>
+{% extends "base.html" %}
+{% block title %}Login & Shorten URL{% endblock %}
 
-<!-- Flash Messages -->
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <ul>
-      {% for category, message in messages %}
-        <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">
-          {{ message }}
-        </li>
-      {% endfor %}
-    </ul>
+{% block content %}
+
+  <!-- URL Shortener at the Top -->
+  <h2>Shorten a URL</h2>
+  <form action="{{ url_for('login') }}" method="POST">
+    <input type="url" name="url_to_shorten" placeholder="Enter a URL to shorten" required>
+    <button type="submit" name="shorten">Shorten</button>
+  </form>
+
+  <!-- Show shortened URL if available -->
+  {% if short_url %}
+    <p>Short URL created: <a href="{{ short_url }}" target="_blank">{{ short_url }}</a></p>
   {% endif %}
-{% endwith %}
 
-<form method="POST">
+  <hr>
+
+  <!-- Login Form at the Bottom -->
+  <h2>Login</h2>
+  <form action="{{ url_for('login') }}" method="POST">
     <input type="text" name="username" placeholder="Username" required><br>
     <input type="password" name="password" placeholder="Password" required><br>
-    <input type="submit" value="Login">
-</form>
-<p>Don't have an account? <a href="{{ url_for('register') }}">Register</a></p>
-</body>
-</html>
+    <button type="submit" name="login">Login</button>
+  </form>
+  <p>Don't have an account? <a href="{{ url_for('register') }}">Register</a></p>
+
+{% endblock %}

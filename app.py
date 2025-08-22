@@ -59,7 +59,23 @@ def generate_unique_short_code():
 # -----------------------------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
+    short_url = None
+
+    # Handle URL shortening
+    if request.method == 'POST' and 'shorten' in request.form:
+        original_url = request.form['url_to_shorten']
+        short_code = generate_unique_short_code()
+        # Save URL with no user (or user_id=None)
+        conn = sqlite3.connect('database.db')
+        c = conn.cursor()
+        c.execute('INSERT INTO urls (user_id, original, short) VALUES (?, ?, ?)',
+                  (None, original_url, short_code))
+        conn.commit()
+        conn.close()
+        short_url = request.host_url + short_code
+
+    # Handle login
+    if request.method == 'POST' and 'login' in request.form:
         uname = request.form['username']
         pwd = request.form['password']
 
@@ -77,7 +93,8 @@ def login():
         else:
             flash('Invalid credentials', 'error')
 
-    return render_template('login.html')
+    return render_template('login.html', short_url=short_url)
+
 
 
 @app.route('/')
@@ -111,6 +128,8 @@ def shorten():
 
     short_url = request.host_url + short_code
     return render_template('shortened.html', short_url=short_url)
+    return render_template('login.html', short_url=short_url)
+
 
 
 @app.route('/<short_code>')

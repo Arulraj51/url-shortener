@@ -1,24 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>URL Shortener</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-<div class="container">
-    <h1>🔗 URL Shortener</h1>
-    <form action="/shorten" method="POST">
-        <input type="url" name="url" placeholder="Enter your long URL" required>
-        <input type="submit" value="Shorten URL">
-    </form>
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
 
-    {% if short_url %}
-        <div class="result">
-            <p>Short URL: <a href="{{ short_url }}">{{ short_url }}</a></p>
-        </div>
-    {% endif %}
+{% block content %}
+  <h2>Welcome {{ session.username }}</h2>
 
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
-</div>
-</body>
-</html>
+  <!-- Search section -->
+  <section id="search-section">
+    <input type="text" id="search-input" placeholder="Search for products">
+    <button id="search-button">Search</button>
+  </section>
+
+  <!-- User's shortened URLs -->
+  <h3>Your Shortened URLs</h3>
+  <form action="{{ url_for('shorten') }}" method="POST">
+    <input type="url" name="url" placeholder="Enter a URL to shorten" required>
+    <button type="submit">Shorten</button>
+  </form>
+
+  <ul>
+    {% for original, short in urls %}
+      <li>
+        {{ original }} → 
+        <a href="{{ request.host_url }}{{ short }}" target="_blank">{{ request.host_url }}{{ short }}</a>
+      </li>
+    {% else %}
+      <li>No URLs yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
